@@ -1,0 +1,43 @@
+{
+  "name": "babelelabeler",
+  "version": "0.0.1",
+  "description": "Get label for RDF resources",
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "typings": "./lib/index.d.ts",
+  "scripts": {
+    "test": "npx jest",
+    "build": "tsc -p tsconfig.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sidmonta/BabeleLabeler.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/@sidmonta"
+  },
+  "keywords": [
+    "LOD",
+    "Label",
+    "RDF"
+  ],
+  "author": "Sidmonta <sidmonta.15@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sidmonta/BabeleCrawler/issues"
+  },
+  "dependencies": {
+    "@sidmonta/babelelibrary": "0.0.6",
+    "ramda": "^0.27.0",
+    "rxjs": "^6.5.5"
+  },
+  "devDependencies": {
+    "@types/jest": "^25.2.3",
+    "@types/ramda": "^0.27.6",
+    "babel-jest": "^26.0.1",
+    "jest": "^26.0.1",
+    "ts-jest": "^26.1.0",
+    "typescript": "^3.9.3",
+    "ts-toolbelt": "^6.9.0"
+  }
+}
