@@ -1,4 +1,4 @@
-import { forEachObjIndexed, map, pipe } from 'ramda'
+import { concat, contains, forEachObjIndexed, ifElse, map, pipe, identity } from 'ramda'
 import { validURL } from '@sidmonta/babelelibrary/build/tools'
 import { getID } from '@sidmonta/babelelibrary/build/lods'
 import { fetchSPARQL } from '@sidmonta/babelelibrary/build/stream'
@@ -17,7 +17,7 @@ type URI = string
 interface Quad {
   predicate?: { value?: string },
   subject?: { value?: string },
-  object?: { value?: string }
+  object?: { value?: string, language?: string }
 }
 
 /**
@@ -60,10 +60,11 @@ export default class Labeler {
    * @async
    *
    * @param {URI} uri URI della risorsa LOD di cui cercare la label
+   * @param {string} lang lingua di definizione della label
    * @param {string} [proxy] qual'ora la ricerca necessiti di un proxy per la ricerca
    * @return {Promise<string>} Ritorna una Promise contenente la label associata alla risorsa
    */
-  public static async __ (uri: URI, proxy: string = ''): Promise<string> {
+  public static async __ (uri: URI, lang: string = '', proxy: string = ''): Promise<string> {
     // Controllo se l'URI della risorsa sia valida, se non lo è la ritorno come se fosse essa stessa la label
     if (!validURL(uri)) {
       return Promise.resolve(uri)
@@ -84,7 +85,9 @@ export default class Labeler {
     let uriForRequest = ''
     try {
       // Genero l'indirizzo dell'ontologia e ci appendo l'indirizzo del proxy
-      uriForRequest = Labeler.proxy + patternURI(uri)
+      // In sostanza se nell'URI è presente il cancelletto vuol dire che il solo url punta direttamente all'intera
+      // ontologia per velocizzare il reperimento in un'unica chiamata di tutte le sue label
+      uriForRequest = ifElse(contains('#'), pipe(patternURI, concat(Labeler.proxy)), identity)(uri)
     } catch (e) {
       Labeler.store.set(uri, uri)
       return Promise.resolve(uri)
@@ -98,6 +101,7 @@ export default class Labeler {
         fetchSPARQL(uriForRequest)
           .pipe(filter( // Filtro le sole triple che riportano la label delle risorse
             (quad: Quad) => quad?.predicate?.value === 'http://www.w3.org/2000/01/rdf-schema#label'
+            && (!lang || quad.object?.language === lang)
           ))
           .subscribe(
             // Salvo ogni tripla nella cache
@@ -130,11 +134,12 @@ export default class Labeler {
    * Si occupa di caricare in cache le label provenienti dalle ontologie passate come parametro, così da risparmiare
    * tempo per le chiamate successive
    * @param urls array di indirizzi a ontologie da cui estrapolare le label
+   * @param lang lingua di definizione della label
    * @param proxy eventualmente il proxy da utilizzare per fare le chiamate
    */
-  public static async prefetch (urls: URI[], proxy: string = ''): Promise<void> {
+  public static async prefetch (urls: URI[], lang: string = '', proxy: string = ''): Promise<void> {
     await pipe(
-      map((url: URI) => Labeler.__(url, proxy)),
+      map((url: URI) => Labeler.__(url, lang, proxy)),
       urlsPromise => Promise.all(urlsPromise)
     )(urls)
   }
@@ -142,12 +147,13 @@ export default class Labeler {
   /**
    * Scorciatoia che cerca le label per un insieme di risorse
    * @param urls lista di risorse per cui ricavare la label
+   * @param lang lingua di definizione della label
    * @param proxy eventualmente il proxy da utilizzare per fare le chiamate
    * @return La promise contenente la lista di label associate alle risorse cercate
    */
-  public static async all (urls: URI[], proxy: string = ''): Promise<string[]> {
+  public static async all (urls: URI[], lang: string = '', proxy: string = ''): Promise<string[]> {
     return await pipe(
-      map((url: URI) => Labeler.__(url, proxy)),
+      map((url: URI) => Labeler.__(url, lang, proxy)),
       urlsPromise => Promise.all(urlsPromise)
     )(urls)
   }
@@ -168,14 +174,14 @@ export default class Labeler {
  * @param {string} [proxy] qual'ora la ricerca necessiti di un proxy per la ricerca
  * @return {Promise<string>} Ritorna una Promise contenente la label associata alla risorsa
  */
-export const __: (uri: URI, proxy?: string) => Promise<string> = Labeler.__
+export const __: (uri: URI, label?: string, proxy?: string) => Promise<string> = Labeler.__
 /**
  * Si occupa di caricare in cache le label provenienti dalle ontologie passate come parametro, così da risparmiare
  * tempo per le chiamate successive
  * @param urls array di indirizzi a ontologie da cui estrapolare le label
  * @param proxy eventualmente il proxy da utilizzare per fare le chiamate
  */
-export const prefetch: (urls: URI[], proxy?: string) => Promise<void> = Labeler.prefetch
+export const prefetch: (urls: URI[], lang?: string, proxy?: string) => Promise<void> = Labeler.prefetch
 /**
  * Permette di definire dei valori custom per le label di determinate risorse.
  * Non fa altro che salvare in cache i valori presenti in obj.
@@ -189,4 +195,4 @@ export const prepopulate: (obj: Record<URI, string>) => void = Labeler.prepopula
  * @param proxy eventualmente il proxy da utilizzare per fare le chiamate
  * @return La promise contenente la lista di label associate alle risorse cercate
  */
-export const __all: (urls: URI[], proxy?: string) => Promise<string[]> = Labeler.all
+export const __all: (urls: URI[], lang?: string, proxy?: string) => Promise<string[]> = Labeler.all
