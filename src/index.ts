@@ -1,6 +1,6 @@
 import { concat, contains, forEachObjIndexed, ifElse, map, pipe, identity } from 'ramda'
 import { validURL } from '@sidmonta/babelelibrary/build/tools'
-import { getID } from '@sidmonta/babelelibrary/build/lods'
+import { getID, ChangeURI } from '@sidmonta/babelelibrary/build/lods'
 import { fetchSPARQL } from '@sidmonta/babelelibrary/build/stream'
 import { filter } from 'rxjs/operators'
 
@@ -105,11 +105,15 @@ export default class Labeler {
           ))
           .subscribe(
             // Salvo ogni tripla nella cache
-            (quad: Quad) => { Labeler.store.set(quad?.subject?.value || '', quad?.object?.value || '') },
+            (quad: Quad) => { quad?.subject?.value && Labeler.store.set(quad.subject.value, quad?.object?.value || id) },
             // Se la chiamata all'ontologia fallisce, salvo in cache l'identificativo e lo ritorno.
             _ => { Labeler.store.set(uri, id) && resolve(id) },
             // Alla fine del processo ritorno la label
-            () => { resolve(Labeler.store.get(uri) || id) }
+            () => {
+              // Wikidata: adatto l'URI cercato con la versione che viene ritornata nelle triple
+              const changeUri = ChangeURI.checkWikidata(uri).replace('wiki/Special:EntityData', 'entity')
+              resolve(Labeler.store.get(changeUri) || id)
+            }
           )
       })
     } catch (e) {
