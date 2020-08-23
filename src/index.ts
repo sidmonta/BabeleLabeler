@@ -111,7 +111,7 @@ export default class Labeler {
           ))
           .subscribe(
             // Salvo ogni tripla nella cache
-            (quad: Quad) => { quad?.subject?.value && Labeler.store.set(quad.subject.value, quad?.object?.value || id) },
+            (quad: Quad) => { quad?.subject?.value && Labeler.store.set(uri, quad?.object?.value || id) },
             // Se la chiamata all'ontologia fallisce, salvo in cache l'identificativo e lo ritorno.
             _ => { Labeler.store.set(uri, id) && resolve(id) },
             // Alla fine del processo ritorno la label
