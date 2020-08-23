@@ -1,4 +1,4 @@
-import { concat, contains, forEachObjIndexed, ifElse, map, pipe, identity } from 'ramda'
+import { concat, contains, forEachObjIndexed, ifElse, map, pipe, includes } from 'ramda'
 import { validURL } from '@sidmonta/babelelibrary/build/tools'
 import { getID, ChangeURI } from '@sidmonta/babelelibrary/build/lods'
 import { fetchSPARQL } from '@sidmonta/babelelibrary/build/stream'
@@ -19,6 +19,12 @@ interface Quad {
   subject?: { value?: string },
   object?: { value?: string, language?: string }
 }
+
+const labelUris: URI[] = [
+  'http://www.w3.org/2000/01/rdf-schema#label',
+  'http://purl.org/dc/terms/title',
+  'http://www.w3.org/2004/02/skos/core#prefLabel'
+]
 
 /**
  * Estrapola da un URI solo il riferimento al servizio della risorsa, non alla risorsa stessa.
@@ -87,7 +93,7 @@ export default class Labeler {
       // Genero l'indirizzo dell'ontologia e ci appendo l'indirizzo del proxy
       // In sostanza se nell'URI è presente il cancelletto vuol dire che il solo url punta direttamente all'intera
       // ontologia per velocizzare il reperimento in un'unica chiamata di tutte le sue label
-      uriForRequest = ifElse(contains('#'), pipe(patternURI, concat(Labeler.proxy)), identity)(uri)
+      uriForRequest = ifElse(contains('#'), pipe(patternURI, concat(Labeler.proxy)), concat(Labeler.proxy))(uri)
     } catch (e) {
       Labeler.store.set(uri, uri)
       return Promise.resolve(uri)
@@ -100,7 +106,7 @@ export default class Labeler {
         // Eseguo la chiamata all'ontologia
         fetchSPARQL(uriForRequest)
           .pipe(filter( // Filtro le sole triple che riportano la label delle risorse
-            (quad: Quad) => quad?.predicate?.value === 'http://www.w3.org/2000/01/rdf-schema#label'
+            (quad: Quad) => includes(quad?.predicate?.value, labelUris)
             && (!lang || quad.object?.language === lang)
           ))
           .subscribe(
