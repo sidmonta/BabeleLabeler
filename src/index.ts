@@ -20,10 +20,17 @@ interface Quad {
   object?: { value?: string, language?: string }
 }
 
+/**
+ * Lista dei predicati che caratterizzano le label di una risorsa LOD.
+ *
+ * Contiene un elenco di URI che vengono utilizzati solitamente per identificare che una tripla di una risorsa LOD
+ * descrive il nome di quella risorsa
+ * @constant
+ */
 const labelUris: URI[] = [
-  'http://www.w3.org/2000/01/rdf-schema#label',
-  'http://purl.org/dc/terms/title',
-  'http://www.w3.org/2004/02/skos/core#prefLabel'
+  'http://www.w3.org/2000/01/rdf-schema#label', // Label di default per RDF
+  'http://purl.org/dc/terms/title', // Titolo di una risorsa per Dublin Core
+  'http://www.w3.org/2004/02/skos/core#prefLabel' // Label per una risorsa descritta da SKOS
 ]
 
 /**
@@ -43,7 +50,15 @@ const patternURI: (url: URI) => URI = pipe(
 
 /**
  * @class
+ * Strumento che si occupa di reperire i titoli o le label di risorse LOD a partire dal loro URI.
  *
+ * Lo strumento utilizza un sistema di cache per non rieseguire più volte il reperimento di una label di una risorsa già
+ * analizzata.
+ * Inoltre permette la definizione di label personalizzate per risorse e la possibilità.
+ * È possibile anche passare come risorsa LOD una o più ontologie e il Labeler analizzerà un'unica volta tutte le label
+ * in esse definite così da non effettuare più chiamate per una stessa ontologia. L'idea nasce dal fatto che una risorsa
+ * LOD in genere viene descritta da un ristretto numero di ontologie e quindi probabile che i dati di quella risorsa
+ * siano descritti da più classi della stessa ontologia.
  */
 export default class Labeler {
   /**
@@ -99,7 +114,7 @@ export default class Labeler {
       return Promise.resolve(uri)
     }
 
-    // Recupero l'identificativo della risorsa
+    // Recupero l'identificativo della risorsa, altrimenti il suo URI è l'identificativo
     const id = getID(uri) || uri
     try {
       return new Promise<string>(resolve => {
@@ -107,12 +122,15 @@ export default class Labeler {
         fetchSPARQL(uriForRequest)
           .pipe(filter( // Filtro le sole triple che riportano la label delle risorse
             (quad: Quad) => includes(quad?.predicate?.value, labelUris)
-            && (!lang || quad.object?.language === lang)
+            && (!lang || quad.object?.language === lang) // Se ho definito una lingua per la label, filtro per
+            // quella lingua
           ))
           .subscribe(
             // Salvo ogni tripla nella cache
             (quad: Quad) => { quad?.subject?.value && Labeler.store.set(uri, quad?.object?.value || id) },
             // Se la chiamata all'ontologia fallisce, salvo in cache l'identificativo e lo ritorno.
+            // Il fallimento è dovuto al fallimento della chiamata fetch o dall'impossibilità di convertire il file
+            // RDF in triple
             _ => { Labeler.store.set(uri, id) && resolve(id) },
             // Alla fine del processo ritorno la label
             () => {
