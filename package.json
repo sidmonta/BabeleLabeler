@@ -27,17 +27,17 @@
     "url": "https://github.com/sidmonta/BabeleCrawler/issues"
   },
   "dependencies": {
-    "@sidmonta/babelelibrary": "0.0.9",
+    "@sidmonta/babelelibrary": "0.0.10",
     "ramda": "^0.27.0",
     "rxjs": "^6.5.5"
   },
   "devDependencies": {
-    "@types/jest": "^25.2.3",
+    "@types/jest": "^26.0.20",
     "@types/ramda": "^0.27.6",
     "babel-jest": "^26.0.1",
     "jest": "^26.0.1",
     "ts-jest": "^26.1.0",
-    "typescript": "^3.9.3",
-    "ts-toolbelt": "^6.9.0"
+    "ts-toolbelt": "^9.6.0",
+    "typescript": "^4.2.3"
   }
 }
